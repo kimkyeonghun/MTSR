@@ -32,4 +32,19 @@ def get_logger(log_path='./logs'):
 
     return logger, os.path.join(log_path, name)
 
+def make_date_dir(path):
+    if not os.path.isdir(path):
+        os.mkdir(path)
+
+    i = 0
+    today = datetime.datetime.now()
+    name = today.strftime('%Y%m%d') + '-' + '%02d' % i
+
+    while os.path.exists(os.path.join(path, name)):
+        i+=1
+        name = today.strftime('%Y%m%d') + '-' + '%02d' % i
+    
+    os.mkdir(os.path.join(path, name))
+    return os.path.join(path, name)
+
     

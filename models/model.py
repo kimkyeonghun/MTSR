@@ -3,7 +3,7 @@ import torch.nn as nn
 from layers import gru, attn, GraphAttentionLayer
 
 class GAT(nn.Module):
-    def __init__(self, n_heads, stock_num):
+    def __init__(self, n_feature, n_hidden, dropout, alpha, n_heads, stock_num):
         super(GAT, self).__init__()
 
         #price encoder
@@ -21,7 +21,7 @@ class GAT(nn.Module):
         self.blending = [nn.Linear(64, 2) for _ in range(stock_num)]
 
         #GAT
-        self.attentions = [GraphAttentionLayer() for _ in range(n_heads)]
+        self.attentions = [GraphAttentionLayer(n_feature, n_hidden, dropout, alpha, concat=True) for _ in range(n_heads)]
         self.out = GraphAttentionLayer()
 
         for i, p_g in enumerate(self.price_gru):
