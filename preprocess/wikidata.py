@@ -64,11 +64,11 @@ def build_graph_from_wiki(market_name, connection_f, tic_wiki_f, sel_wiki_f):
         wiki_relation_embedding[i][i][-1] = 1
     
     print(wiki_relation_embedding.shape)
-    np.save(market_name + "_wiki_relation", wiki_relation_embedding)
+    np.save(os.path.join('./data/relation', market_name + "_graph"), wiki_relation_embedding)
     print("Save completed")
 
 if __name__ == "__main__":
-    data_path = "../data/wikidata"
+    data_path = "./data/relation/wikidata"
     market_name = 'NASDAQ'
     build_graph_from_wiki(market_name,
                         os.path.join(data_path, market_name + '_connections.json'),

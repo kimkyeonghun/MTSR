@@ -9,7 +9,7 @@ def get_logger(log_path='./logs'):
 
     logger = logging.getLogger()
     date_format = '%Y-%m-%d %H:%M:%S'
-    formatter = logging.Formatter(['[%(levelname)s|%(filename)s:%(lineno)s] %(asctime)s %(message)s', date_format])
+    formatter = logging.Formatter('[%(levelname)s|%(filename)s:%(lineno)s] %(asctime)s %(message)s', date_format)
 
     i = 0
     today = datetime.datetime.now()

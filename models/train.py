@@ -2,7 +2,7 @@ import os
 import logging
 import argparse
 
-from torch.optim import AdamW
+from torch.optim import Adam
 
 from model import GAT
 import utils
@@ -19,13 +19,14 @@ parser.add_argument('--stock_num', type=int, default=8,)
 parser.add_argument('--lr', type=float, default=1e-5,)
 parser.add_argument('--alpha', type=float, default=0.2,)
 parser.add_argument('--dropout', type=float, default=0.5,)
+parser.add_argument('--market_name',type=str, default='NASDAQ')
 args = parser.parse_args()
 
 def prepare_for_training():
     model = GAT(args.h_head, args.stock_num)
     model.cuda()
 
-    optimizer = AdamW(model.parameter(), lr = args.lr)
+    optimizer = Adam(model.parameter(), lr = args.lr)
 
     return model, optimizer
 
@@ -33,7 +34,7 @@ def prepare_for_training():
 def main():
     logger.info("#Load Dataset")
 
-    (train_dataset, val_dataset, test_dataset) = load_dataset()
+    (train_dataset, val_dataset, test_dataset) = load_dataset(args, logger)
 
     logger.info("#Prepare for Training")
     model, optimizer = prepare_for_training()
