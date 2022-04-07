@@ -33,7 +33,7 @@ def train_epoch(args, model, train_dataset, optimizer):
 
 
 
-def train(args, model, train_datatset, val_dataset, test_dataset, optimizer, logger):
+def train(args, model, train_datatset, val_dataset, test_dataset, adj, optimizer, logger):
     model_save_path = utils.make_date_dir('./model_save')
     logger.info("Model save path: {}".format(model_save_path))
 

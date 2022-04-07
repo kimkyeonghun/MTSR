@@ -34,12 +34,12 @@ def prepare_for_training():
 def main():
     logger.info("#Load Dataset")
 
-    (train_dataset, val_dataset, test_dataset) = load_dataset(args, logger)
+    (train_dataset, val_dataset, test_dataset, adj) = load_dataset(args, logger)
 
     logger.info("#Prepare for Training")
     model, optimizer = prepare_for_training()
 
-    train(args, model, train_dataset, val_dataset, test_dataset, optimizer, logger)
+    train(args, model, train_dataset, val_dataset, test_dataset, adj, optimizer, logger)
 
 
 if __name__ == "__main__":
