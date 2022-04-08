@@ -1,22 +1,22 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from layers import gru, attn, GraphAttentionLayer
+from layers import gru, Attn, GraphAttentionLayer
 
 class GAT(nn.Module):
-    def __init__(self, n_feature, n_hidden, dropout, alpha, n_heads, stock_num):
+    def __init__(self, n_feature, n_hidden, n_class, dropout, alpha, n_heads, stock_num):
         super(GAT, self).__init__()
         self.dropout = dropout
 
         #price encoder
         self.price_gru = [gru(3, 64) for _ in range(stock_num)]
-        self.price_attn = [attn(64, 64) for _ in range(stock_num)]
+        self.price_attn = [Attn(64, 64) for _ in range(stock_num)]
 
         #text embedding
         self.text_gru = [gru(512, 64) for _ in range(stock_num)]
-        self.text_attn = [attn(64, 64) for _ in range(stock_num)]
+        self.text_attn = [Attn(64, 64) for _ in range(stock_num)]
         self.seq_gru = [gru(64, 64) for _ in range(stock_num)]
-        self.seq_attn = [attn(64, 64) for _ in range(stock_num)]
+        self.seq_attn = [Attn(64, 64) for _ in range(stock_num)]
 
         #multimodal bledning
         self.bilinear = [nn.Bilinear(64, 64, 64) for _ in range(stock_num)]
@@ -24,7 +24,7 @@ class GAT(nn.Module):
 
         #GAT
         self.attentions = [GraphAttentionLayer(n_feature, n_hidden, dropout, alpha, concat=True) for _ in range(n_heads)]
-        self.out = GraphAttentionLayer()
+        self.out = GraphAttentionLayer(n_feature * n_hidden, n_class, dropout, alpha, concat=False)
 
         for i, p_g in enumerate(self.price_gru):
             self.add_module(f'price_gru{i}', p_g)

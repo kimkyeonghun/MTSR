@@ -91,7 +91,7 @@ def gen_text_dataset(text_dataset, date_range):
 def load_price(logger):
     price_dataset = defaultdict(dict)
     logger.info("#Load Price")
-    for stock in tqdm(os.listdir(PRICE_PATH),desc="Stock Iteration"):
+    for stock in tqdm(os.listdir(PRICE_PATH),desc="Price Iteration"):
         prices = pd.read_csv(os.path.join(PRICE_PATH, stock))
         stock, _ = stock.split(".")
         if stock=='GMRE':
@@ -120,7 +120,7 @@ def load_text(logger):
     logger.info("#Universal Sentence Encoder Start")
 
     text_dataset= defaultdict(dict)
-    for stock in tqdm(os.listdir(TEXT_PATH), desc='Stock Iteration'):
+    for stock in tqdm(os.listdir(TEXT_PATH), desc='Text Iteration'):
         stock_path = os.path.join(TEXT_PATH, stock)
         text_list = os.listdir(stock_path)
         for day in tqdm(text_list, desc="Day Iteration"):
@@ -169,8 +169,8 @@ def make_dataset(price_dataset, text_dataset):
         text_feature = text_dataset[:,idx, :, :, :]
         # future prediction
         label = labels[:, idx+1]
-        features.append(price_feature, text_feature, label)
-        
+        features.append((price_feature, text_feature, label))
+
     dataset = MTSRDataset(features)
     return dataset
 

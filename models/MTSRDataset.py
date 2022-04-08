@@ -12,6 +12,9 @@ class MTSRDataset(Dataset):
     def __len__(self):
         return self.total_item
 
+    def count(self):
+        return len(self.items)
+
     def __getitem__(self, i):
         price = self.items[i][0]
         text = self.items[i][1]

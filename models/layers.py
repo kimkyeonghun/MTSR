@@ -11,10 +11,10 @@ class gru(nn.Module):
         out, h_n = self.gru(inputs)
         return out, h_n
 
-class attn(nn.Module):
+class Attn(nn.Module):
     #Bahdanau Attention
     def __init__(self, in_shape, out_shape):
-        super(attn, self).__init__()
+        super(Attn, self).__init__()
         self.W1 = nn.Linear(in_shape, out_shape)
         self.W2 = nn.Linear(in_shape, out_shape)
         self.V = nn.Linear(in_shape, 1)
