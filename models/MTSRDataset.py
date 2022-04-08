@@ -13,4 +13,7 @@ class MTSRDataset(Dataset):
         return self.total_item
 
     def __getitem__(self, i):
-        return 
+        price = self.items[i][0]
+        text = self.items[i][1]
+        label = self.items[i][2]
+        return price, text, label

@@ -1,10 +1,12 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from layers import gru, attn, GraphAttentionLayer
 
 class GAT(nn.Module):
     def __init__(self, n_feature, n_hidden, dropout, alpha, n_heads, stock_num):
         super(GAT, self).__init__()
+        self.dropout = dropout
 
         #price encoder
         self.price_gru = [gru(3, 64) for _ in range(stock_num)]
@@ -43,8 +45,48 @@ class GAT(nn.Module):
         for i, attn in enumerate(self.attentions):
             self.add_module(f'attentions{i}', attn)
 
-    def forward():
-        pass
+    def forward(self, text_input, price_input, label, adj, train):
+        #num_text=5, num_day=5, f_price=3, num_stock=87
+        num_text = text_input.size(2)
+        num_day = text_input.size(1)
+        f_price = price_input.size(2)
+        num_stock = price_input.size(0)
+
+        rep = []
+        for i in range(num_stock):
+            x = self.price_gru[i](price_input[i, :, :].reshape((1,num_day, f_price)))
+            x = self.price_attn[i](*x).reshape((1,64))
+            one_day = []
+            for j in range(text_input.size(1)):
+                y = self.text_gru[i](text_input[i,j,:,:].reshape((1,num_text, 512)))
+                y = self.text_attn[i](*y).reshape((1,64))
+                one_day.append(y)
+
+            #바로 init..?
+            news_vector = torch.Tensor((1, num_day, 64))
+            news_vector = torch.cat(one_day)
+            text = self.seq_gru[i](news_vector.reshape((1,num_day,64)))
+            text = self.seq_attn[i](*text).reshape((1,64))
+            combined = F.tanh(self.bilinear[i](text, x).reshape((1,64)))
+            rep.append(combined.reshape(1,64))
+        
+        feature = torch.Tensor((num_stock, 64))
+        feature = torch.cat(rep)
+        out_1 = F.tanh(self.blending[i](feature))
+        x = F.dropout(feature, self.dropout, training = train)
+        x = torch.cat([att(x, adj) for att in self.attentions], dim=1)
+        x = F.dropout(x, self.dropout, training = train)
+        x = F.elu(self.out(x, adj))
+
+        output = x + out_1
+        #need to train
+        output = F.softmax(output, dim=1)
+        loss_fct = nn.CrossEntropoyLoss()
+        loss = loss_fct(label, output)
+
+        return [loss, output]
+
+
 
 
 
