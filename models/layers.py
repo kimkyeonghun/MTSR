@@ -45,11 +45,14 @@ class GraphAttentionLayer(nn.Module):
     
     def forward(self, input, adj):
         h = torch.mm(input, self.W)
+        print(self.W.shape)
         N = h.size()[0]
 
         #need to check
         a_input = torch.cat([h.repeat(1, N).view(N*N, -1), h.repeat(N, 1)], dim=1).view(N, -1, 2*self.out_features)
+        print(a_input.shape)
         e = self.leakyrelu(torch.matmul(a_input, self.a).squeeze(2))
+        print(e.shape)
 
         zero_vec = -9e15*torch.ones_like(e)
         attention = torch.where(adj > 0, e, zero_vec)

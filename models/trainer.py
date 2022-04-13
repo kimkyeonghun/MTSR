@@ -94,7 +94,7 @@ def train(args, model, train_datatset, val_dataset, test_dataset, adj, optimizer
     best_loss = 0.0
     patience = 0
 
-    for epoch in args.n_epoch:
+    for epoch in range(1, args.n_epochs):
         patience += 1
 
         logger.info("=======================Train=======================")
@@ -123,5 +123,6 @@ def train(args, model, train_datatset, val_dataset, test_dataset, adj, optimizer
         
         if patience==5:
             break
+        
     logger.info(f"[Best Epoch {best_epoch}] Best_Acc: {best_acc} Best_f1: {best_f1} Best_mat: {best_mat}")
             

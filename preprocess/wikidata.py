@@ -74,3 +74,9 @@ if __name__ == "__main__":
                         os.path.join(data_path, market_name + '_connections.json'),
                         os.path.join(data_path, market_name + '_wiki.csv'),
                         os.path.join(data_path, 'selected_wiki_connections.csv'))
+
+    market_name = 'NYSE'
+    build_graph_from_wiki(market_name,
+                        os.path.join(data_path, market_name + '_connections.json'),
+                        os.path.join(data_path, market_name + '_wiki.csv'),
+                        os.path.join(data_path, 'selected_wiki_connections.csv'))

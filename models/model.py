@@ -4,9 +4,10 @@ import torch.nn.functional as F
 from layers import gru, Attn, GraphAttentionLayer
 
 class GAT(nn.Module):
-    def __init__(self, n_feature, n_hidden, n_class, dropout, alpha, n_heads, stock_num):
+    def __init__(self, n_feature, n_hidden, n_class, dropout, alpha, n_heads, stock_num, logger):
         super(GAT, self).__init__()
         self.dropout = dropout
+        self.logger = logger
 
         #price encoder
         self.price_gru = [gru(3, 64) for _ in range(stock_num)]
@@ -45,19 +46,29 @@ class GAT(nn.Module):
         for i, attn in enumerate(self.attentions):
             self.add_module(f'attentions{i}', attn)
 
+    def info(self, text):
+        self.logger.info(text)
+
     def forward(self, text_input, price_input, label, adj, train):
         #num_text=5, num_day=5, f_price=3, num_stock=87
-        num_text = text_input.size(2)
-        num_day = text_input.size(1)
-        f_price = price_input.size(2)
-        num_stock = price_input.size(0)
+        num_text = text_input.size(3)
+        num_day = text_input.size(2)
+        f_price = price_input.size(3)
+        num_stock = price_input.size(1)
+        self.info("# of text: {}, # of day: {}, price feature: {}, # of stock: {}".\
+                    format(num_text, num_day, f_price, num_stock))
+        # print(text_input.size(), price_input.size())
 
         rep = []
+        price_input = price_input.squeeze(0)
+        text_input = text_input.squeeze(0)
+        self.info("Shape of Price input {}".format(price_input.shape))
+        self.info("Shape of Text input {}".format(text_input.shape))
         for i in range(num_stock):
             x = self.price_gru[i](price_input[i, :, :].reshape((1,num_day, f_price)))
             x = self.price_attn[i](*x).reshape((1,64))
             one_day = []
-            for j in range(text_input.size(1)):
+            for j in range(num_day):
                 y = self.text_gru[i](text_input[i,j,:,:].reshape((1,num_text, 512)))
                 y = self.text_attn[i](*y).reshape((1,64))
                 one_day.append(y)
@@ -74,6 +85,8 @@ class GAT(nn.Module):
         feature = torch.cat(rep)
         out_1 = F.tanh(self.blending[i](feature))
         x = F.dropout(feature, self.dropout, training = train)
+        self.info("Shape of output {}".format(x.shape))
+        self.info("Shape of adj {}".format(adj.shape))
         x = torch.cat([att(x, adj) for att in self.attentions], dim=1)
         x = F.dropout(x, self.dropout, training = train)
         x = F.elu(self.out(x, adj))

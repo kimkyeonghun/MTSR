@@ -1,0 +1,6 @@
+sklearn
+pandas
+requests
+# tensorflow_text
+# bokeh
+tqdm

@@ -1,8 +1,8 @@
-import random
-
 import torch
 from torch.utils.data import Dataset
-import numpy as np
+
+
+DEVICE = torch.device("cuda")
 
 class MTSRDataset(Dataset):
     def __init__(self, features):
@@ -19,4 +19,6 @@ class MTSRDataset(Dataset):
         price = self.items[i][0]
         text = self.items[i][1]
         label = self.items[i][2]
-        return price, text, label
+        return torch.tensor(price, dtype=torch.float32, device=DEVICE),\
+         torch.tensor(text, dtype=torch.float32, device=DEVICE),\
+         torch.tensor(label, dtype=torch.float32, device=DEVICE)

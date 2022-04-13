@@ -99,7 +99,7 @@ def load_graph(market_name, logger):
         return mx.dot(r_mat_inv_sqrt).transpose().dot(r_mat_inv_sqrt)
 
     adj = np.load(os.path.join(GRAPH_PATH, market_name+'_graph.npy'))
-    rel_shape = [adj.shape[0], adj.shape[1]]
+    rel_shape = [adj.shape[2], adj.shape[2]]
     mask_flags = np.equal(np.zeros(rel_shape, dtype=int),
                     np.sum(adj, axis=2))
     adj = np.where(mask_flags, np.ones(rel_shape)*1e-9, np.zeros(rel_shape))
@@ -119,7 +119,7 @@ def make_dataset(price_dataset, text_dataset):
         text_feature = text_dataset[:,idx, :, :, :]
         # future prediction
         label = labels[:, idx+1]
-        features.append((price_feature, text_feature, label))
+        features.append((text_feature, price_feature, label))
 
     dataset = MTSRDataset(features)
     return dataset
