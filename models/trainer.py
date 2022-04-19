@@ -102,11 +102,11 @@ def train(args, model, train_datatset, val_dataset, test_dataset, adj, optimizer
         logger.info("[Train Epoch {}] Train_loss: {}".format(epoch+1, train_loss,))
 
         logger.info("=======================Validation=======================")
-        val_loss = val_epoch(args, model, val_dataset, adj, optimizer)
+        val_loss = val_epoch(args, model, val_dataset, adj)
         logger.info("[Val Epoch {}] Val_loss: {}".format(epoch+1, val_loss,))
 
         logger.info("=======================Test=======================")
-        _, preds, labels = test_epoch(args, model, test_dataset, adj, optimizer)
+        _, preds, labels = test_epoch(args, model, test_dataset, adj)
         acc, f1, mat = test_score(preds, labels)
         logger.info("[Test Epoch {}] Accuracy: {} F1-score: {} MCC: {}"
                 .format(epoch+1, acc, f1, mat))

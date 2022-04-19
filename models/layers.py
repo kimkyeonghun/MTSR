@@ -1,3 +1,6 @@
+import copy
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -64,3 +67,53 @@ class GraphAttentionLayer(nn.Module):
             return F.elu(h_prime)
         else:
             return h_prime
+
+
+class SelfAttentionLayer(nn.Module):
+    def __init__(self, d_model, h, qkv_fc_layer, fc_layer):
+        super(SelfAttentionLayer, self).__init__()
+        self.d_model = d_model
+        self.h = h
+        self.query_fc_layer = copy.deepcopy(qkv_fc_layer)
+        self.key_fc_layer = copy.deepcopy(qkv_fc_layer)
+        self.value_fc_layer = copy.deepcopy(qkv_fc_layer)
+        self.fc_layer = fc_layer
+
+    def calculate_attention(self, query, key, value, mask):
+        d_k = key.size(-1)
+        attention_score = torch.matmul(query, key.transpose(-2, -1))
+        attention_score = attention_score / math.sqrt(d_k)
+
+        if mask is not None:
+            attention_score = attention_score.masked_fill(mask==0, -1e9)
+
+        attention_prob = F.softmax(attention_score, dim=-1)
+        out = torch.matmul(attention_prob, value)
+
+        return out
+
+    def forward(self, query, key, value, mask=None):
+        # query, key, value's shape: (n_batch, seq_len, d_embed) -> (1, 87, 64)
+        # mask's shape: (n_batch, seq_len, seq_len) -> (1, 87, 87)
+        n_batch = query.shape[0]
+
+        def transform(x, fc_layer):
+            # reshape (n_batch, seq_len, d_embed) to (n_batch, h, seq_len, d_k) -> (1, 87, 64) -> ()
+            out = fc_layer(x) # out's shape (n_batch, seq_len, d_model)
+            out = out.view(n_batch, -1, self.h, self.d_model//self.h)
+            out = out.transpose(1,2)
+            return out
+
+        query = transform(query, self.query_fc_layer)
+        key = transform(key, self.key_fc_layer)
+        value = transform(value, self.value_fc_layer)
+
+        if mask is not None:
+            mask = mask.unsqueeze(1)
+
+        out = self.calculate_attention(query, key, value, mask)
+        out = out.transpose(1,2)
+        out = out.contiguous().view(n_batch, -1, self.d_model)
+        out = self.fc_layer(out)
+
+        return out

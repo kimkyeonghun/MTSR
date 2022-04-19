@@ -21,4 +21,4 @@ class MTSRDataset(Dataset):
         label = self.items[i][2]
         return torch.tensor(price, dtype=torch.float32, device=DEVICE),\
          torch.tensor(text, dtype=torch.float32, device=DEVICE),\
-         torch.tensor(label, dtype=torch.float32, device=DEVICE)
+         torch.tensor(label, dtype=torch.int64, device=DEVICE)

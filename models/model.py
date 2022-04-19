@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from layers import gru, Attn, GraphAttentionLayer
+from layers import gru, Attn, GraphAttentionLayer, SelfAttentionLayer
 
 class GAT(nn.Module):
     def __init__(self, n_feature, n_hidden, n_class, dropout, alpha, n_heads, stock_num, logger):
@@ -24,8 +24,12 @@ class GAT(nn.Module):
         self.blending = [nn.Linear(64, 2) for _ in range(stock_num)]
 
         #GAT
-        self.attentions = [GraphAttentionLayer(n_feature, n_hidden, dropout, alpha, concat=True) for _ in range(n_heads)]
+        #self.attentions = [GraphAttentionLayer(n_feature, n_hidden, dropout, alpha, concat=True) for _ in range(n_heads)]
         self.out = GraphAttentionLayer(n_feature * n_hidden, n_class, dropout, alpha, concat=False)
+
+        #Self
+        self.attentions = [SelfAttentionLayer(64, n_heads, nn.Linear(64, 64), nn.Linear(64, 64))]
+        self.fc_layer = nn.Linear(64,2)
 
         for i, p_g in enumerate(self.price_gru):
             self.add_module(f'price_gru{i}', p_g)
@@ -55,15 +59,15 @@ class GAT(nn.Module):
         num_day = text_input.size(2)
         f_price = price_input.size(3)
         num_stock = price_input.size(1)
-        self.info("# of text: {}, # of day: {}, price feature: {}, # of stock: {}".\
-                    format(num_text, num_day, f_price, num_stock))
+        #self.info("# of text: {}, # of day: {}, price feature: {}, # of stock: {}".\
+        #            format(num_text, num_day, f_price, num_stock))
         # print(text_input.size(), price_input.size())
 
         rep = []
         price_input = price_input.squeeze(0)
         text_input = text_input.squeeze(0)
-        self.info("Shape of Price input {}".format(price_input.shape))
-        self.info("Shape of Text input {}".format(text_input.shape))
+        #self.info("Shape of Price input {}".format(price_input.shape))
+        #self.info("Shape of Text input {}".format(text_input.shape))
         for i in range(num_stock):
             x = self.price_gru[i](price_input[i, :, :].reshape((1,num_day, f_price)))
             x = self.price_attn[i](*x).reshape((1,64))
@@ -85,17 +89,22 @@ class GAT(nn.Module):
         feature = torch.cat(rep)
         out_1 = F.tanh(self.blending[i](feature))
         x = F.dropout(feature, self.dropout, training = train)
-        self.info("Shape of output {}".format(x.shape))
-        self.info("Shape of adj {}".format(adj.shape))
-        x = torch.cat([att(x, adj) for att in self.attentions], dim=1)
+        #self.info("Shape of output {}".format(x.shape))
+        #self.info("Shape of adj {}".format(adj.shape))
+        x = x.unsqueeze(0)
+        x = torch.cat([att(x, x, x) for att in self.attentions], dim=1)
         x = F.dropout(x, self.dropout, training = train)
-        x = F.elu(self.out(x, adj))
+        x = x.squeeze(0)
+        x = F.elu(self.fc_layer(x))
 
         output = x + out_1
         #need to train
         output = F.softmax(output, dim=1)
-        loss_fct = nn.CrossEntropoyLoss()
-        loss = loss_fct(label, output)
+        loss_fct = nn.CrossEntropyLoss()
+        label = label.squeeze(0)
+        #self.info("Shape of output {}".format(output.shape))
+        #self.info("Shape of label {}".format(label.shape))
+        loss = loss_fct(output, label.long())
 
         return [loss, output]
 

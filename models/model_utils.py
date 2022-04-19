@@ -99,7 +99,10 @@ def load_graph(market_name, logger):
         return mx.dot(r_mat_inv_sqrt).transpose().dot(r_mat_inv_sqrt)
 
     adj = np.load(os.path.join(GRAPH_PATH, market_name+'_graph.npy'))
-    rel_shape = [adj.shape[2], adj.shape[2]]
+    rel_shape = [adj.shape[0], adj.shape[1]]
+    # print(adj.shape)
+    # print(rel_shape)
+    # print(np.sum(adj, axis=2).shape)
     mask_flags = np.equal(np.zeros(rel_shape, dtype=int),
                     np.sum(adj, axis=2))
     adj = np.where(mask_flags, np.ones(rel_shape)*1e-9, np.zeros(rel_shape))
