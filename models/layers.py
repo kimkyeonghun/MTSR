@@ -22,9 +22,15 @@ class Attn(nn.Module):
         self.W2 = nn.Linear(in_shape, out_shape)
         self.V = nn.Linear(in_shape, 1)
     
-    def forward(self, full, last):
+    def forward(self, full, last, test):
         score = self.V(F.tanh(self.W1(last)+self.W2(full)))
         a_weight = F.softmax(score, dim=1)
+        if test:
+            context_vector = a_weight * full
+            context_vector = torch.sum(context_vector, dim=1)
+            score = score.squeeze(0).cpu().detach().numpy()
+            return context_vector, score
+            
         context_vector = a_weight * full
         context_vector = torch.sum(context_vector, dim=1)
         return context_vector
@@ -48,14 +54,11 @@ class GraphAttentionLayer(nn.Module):
     
     def forward(self, input, adj):
         h = torch.mm(input, self.W)
-        print(self.W.shape)
         N = h.size()[0]
 
         #need to check
         a_input = torch.cat([h.repeat(1, N).view(N*N, -1), h.repeat(N, 1)], dim=1).view(N, -1, 2*self.out_features)
-        print(a_input.shape)
         e = self.leakyrelu(torch.matmul(a_input, self.a).squeeze(2))
-        print(e.shape)
 
         zero_vec = -9e15*torch.ones_like(e)
         attention = torch.where(adj > 0, e, zero_vec)
@@ -79,7 +82,7 @@ class SelfAttentionLayer(nn.Module):
         self.value_fc_layer = copy.deepcopy(qkv_fc_layer)
         self.fc_layer = fc_layer
 
-    def calculate_attention(self, query, key, value, mask):
+    def calculate_attention(self, query, key, value, mask, test):
         d_k = key.size(-1)
         attention_score = torch.matmul(query, key.transpose(-2, -1))
         attention_score = attention_score / math.sqrt(d_k)
@@ -87,12 +90,15 @@ class SelfAttentionLayer(nn.Module):
         if mask is not None:
             attention_score = attention_score.masked_fill(mask==0, -1e9)
 
+        if test:
+            return attention_score
+
         attention_prob = F.softmax(attention_score, dim=-1)
         out = torch.matmul(attention_prob, value)
 
         return out
 
-    def forward(self, query, key, value, mask=None):
+    def forward(self, query, key, value, test, mask=None):
         # query, key, value's shape: (n_batch, seq_len, d_embed) -> (1, 87, 64)
         # mask's shape: (n_batch, seq_len, seq_len) -> (1, 87, 87)
         n_batch = query.shape[0]
@@ -111,7 +117,11 @@ class SelfAttentionLayer(nn.Module):
         if mask is not None:
             mask = mask.unsqueeze(1)
 
-        out = self.calculate_attention(query, key, value, mask)
+        if test:
+            attention_score = self.calculate_attention(query, key, value, mask, test)
+            return attention_score
+
+        out = self.calculate_attention(query, key, value, mask, test)
         out = out.transpose(1,2)
         out = out.contiguous().view(n_batch, -1, self.d_model)
         out = self.fc_layer(out)

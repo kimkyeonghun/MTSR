@@ -1,5 +1,6 @@
 /data
 /logs
+/model_save
 
 .ipynb_checkpoints
 __pycache__
@@ -8,3 +9,7 @@ __pycache__
 *.ipynb
 
 *.tar
+
+nohup.out
+
+*.json
