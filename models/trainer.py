@@ -51,9 +51,7 @@ def val_epoch(args, model, val_dataset, adj):
     preds = []
 
     for _, batch in enumerate(tqdm(valDataLoader, desc="Iteration")):
-        val_price, val_text, val_label, _, _ = batch
-        val_text = val_text.unsqueeze(0)
-        val_price = val_price.unsqueeze(0)        
+        val_price, val_text, val_label, _, _ = batch      
         outputs = model(val_text, val_price, val_label, adj, train = False)
 
         loss, output = outputs
@@ -65,7 +63,7 @@ def val_epoch(args, model, val_dataset, adj):
         val_loss += loss
 
         preds.extend(list(output.detach().cpu().numpy()))
-        labels.extend(list(val_label[0].detach().cpu().numpy()))
+        labels.extend(list(val_label.detach().cpu().numpy()))
 
 
     return val_loss/tr_steps, preds, labels
@@ -83,9 +81,7 @@ def test_epoch(args, model, test_dataset, adj):
     labels = []
 
     for _, batch in enumerate(tqdm(testDataLoader, desc="Iteration")):
-        test_price, test_text, test_label,  _, _ = batch
-        test_text = test_text.unsqueeze(0)
-        test_price = test_price.unsqueeze(0)  
+        test_price, test_text, test_label,  _, _ = batch 
         output = model(test_text, test_price, test_label, adj, train = False)
 
         _, output = output
@@ -93,7 +89,7 @@ def test_epoch(args, model, test_dataset, adj):
         output = torch.argmax(sigmoid(output), dim=1)
 
         outputs.extend(list(output.detach().cpu().numpy()))
-        labels.extend(list(test_label[0].detach().cpu().numpy()))
+        labels.extend(list(test_label.detach().cpu().numpy()))
 
     return [], outputs, labels
 

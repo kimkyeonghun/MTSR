@@ -1,6 +1,5 @@
 from collections import defaultdict, deque
 import copy
-import json
 import os
 from tqdm import tqdm
 

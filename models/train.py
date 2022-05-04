@@ -25,6 +25,7 @@ parser.add_argument('--market_name',type=str, default='NASDAQ')
 args = parser.parse_args()
 
 def prepare_for_training(logger):
+    logger.info("Number of Head {}".format(args.n_head))
     model = GAT(n_feature= 64, n_hidden= 64, n_class = 2,
         dropout= args.dropout,
         alpha= args.alpha,

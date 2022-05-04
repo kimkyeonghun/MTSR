@@ -29,13 +29,13 @@ def gen_text_dataset(text_dataset, date_range):
         for date in date_range:
             key = date.strftime('%Y-%m-%d')
             if key in text_dataset[stock]:
-                if text_dataset[stock][key].shape[0] <= 5:
-                    zero_padding = tf.zeros([5-text_dataset[stock][key].shape[0], 512], dtype=tf.float32)
+                if text_dataset[stock][key].shape[0] <= 1:
+                    zero_padding = tf.zeros([1-text_dataset[stock][key].shape[0], 512], dtype=tf.float32)
                     data = tf.concat([text_dataset[stock][key], zero_padding], 0)
                 else:
-                    data = text_dataset[stock][key][:5]
+                    data = text_dataset[stock][key][:1]
             else: 
-                zero_padding = tf.zeros([5, 512], dtype=tf.float32)
+                zero_padding = tf.zeros([1, 512], dtype=tf.float32)
                 data = zero_padding
             if len(time_dur) != 5:
                 time_dur.append(data)

@@ -1,8 +1,6 @@
 import torch
 from torch.utils.data import Dataset
 
-import numpy as np
-
 DEVICE = torch.device("cuda")
 
 def collate(samples):
@@ -40,7 +38,6 @@ class MTSRDataset(Dataset):
         price = self.items[i][0][1]
         label = self.items[i][0][2]
         date = self.items[i][0][3][0]
-        print("text", text.shape)
         
         stocks = self.items[i][1]
         strings = dict()
