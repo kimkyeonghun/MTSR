@@ -74,7 +74,7 @@ def gen_price_dataset(price_dataset, date_range):
 
     return pdataset, target, stocks, target_dates
 
-def gen_price():
+def gen_price(logger=False):
     price_dataset = defaultdict(dict)
     for stock in tqdm(os.listdir(PRICE_PATH),desc="Price Iteration"):
         prices = pd.read_csv(os.path.join(PRICE_PATH, stock))
@@ -98,12 +98,14 @@ def gen_price():
     if not os.path.exists('./price_data'):
         os.mkdir('./price_data')
     
-    np.save('./price_data/price_train.npy', (train_dataset, train_target, stocks, train_dates))
+    np.save('./price_data/price_train.npy', train_dataset)
     #np.save('./price_data/price_train.npy', train_dataset)
     np.save('./price_data/price_val.npy', val_dataset)
     np.save('./price_data/price_test.npy', test_dataset)
 
     print("Complete Price data generation")
+    
+    return [train_dataset, train_target, stocks, train_dates], [val_dataset, val_target, _, val_dates], [test_dataset, test_target, _, test_dates]
 
 def remove_emoji(string):
     emoji_pattetn = re.compile("["
@@ -152,6 +154,7 @@ def gen_text_dataset(text_dataset, date_range):
                 text_data = zero_padding
                 time_data = one_padding
             #window
+            #print(text_data.shape)
             if len(time_dur) != 5:
                 time_text_dur.append(text_data)
                 time_dur.append(time_data)
@@ -165,7 +168,7 @@ def gen_text_dataset(text_dataset, date_range):
                 time_dur.append(time_data)
                 text_stock_day.append(time_text_dur)
                 time_stock_day.append(time_dur)
-
+            #print(len(time_text_dur))
         tweet_dataset.append(text_stock_day)
         time_dataset.append(time_stock_day)
 
@@ -174,7 +177,7 @@ def gen_text_dataset(text_dataset, date_range):
 
     return text_dataset, time_dataset
 
-def gen_text():
+def gen_text(logger=False):
     text_dataset = defaultdict(dict)
     for stock in tqdm(os.listdir(TEXT_PATH), desc = "Text Iteration"):
         stock_path = os.path.join(TEXT_PATH, stock)
@@ -232,6 +235,8 @@ def gen_text():
     np.save('./time_data/time_test.npy', test_time_dataset)
 
     print("Complete Text and Time data generation")
+
+    return (train_text_dataset, train_time_dataset),(val_text_dataset, val_time_dataset),(test_text_dataset, test_time_dataset)
 
 def gen_data_npy():
     gen_price()
