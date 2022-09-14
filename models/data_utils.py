@@ -131,10 +131,10 @@ def tweet_preprocessing(string):
     return " ".join(string)
 
 def gen_text_dataset(text_dataset, date_range):
-    tweet_dataset, time_dataset = [], []
+    tweet_dataset, time_dataset = torch.tensor([]), torch.tensor([])
     for stock in os.listdir(TEXT_PATH):
-        text_stock_day, time_stock_day = [], []
-        time_text_dur, time_dur = deque(), deque()
+        text_stock_day, time_stock_day = torch.tensor([]), torch.tensor([])
+        time_text_dur, time_dur = torch.tensor([]), torch.tensor([])
         for date in date_range:
             key = date.strftime('%Y-%m-%d')
             if key in text_dataset[stock]:
@@ -155,25 +155,32 @@ def gen_text_dataset(text_dataset, date_range):
                 time_data = one_padding
             #window
             #print(text_data.shape)
-            if len(time_dur) != 5:
-                time_text_dur.append(text_data)
-                time_dur.append(time_data)
-                if len(time_dur) ==5:
-                    text_stock_day.append(time_text_dur)
-                    time_stock_day.append(time_dur)
+            if len(text_stock_day.shape) <= 3:
+                text_data = text_data.unsqueeze(0)
+                time_data = time_data.unsqueeze(0)
+                time_text_dur = torch.cat([time_text_dur, text_data])
+                time_dur = torch.cat([time_dur, time_data])
+                if time_dur.shape[0] == 5:
+                    temp_time_text_dur = time_text_dur.unsqueeze(0)
+                    temp_time_dur = time_dur.unsqueeze(0)
+                    text_stock_day = torch.cat([text_stock_day, temp_time_text_dur])
+                    time_stock_day = torch.cat([time_stock_day, temp_time_dur])
             else:
-                time_dur.popleft()
-                time_text_dur.popleft()
-                time_text_dur.append(text_data)
-                time_dur.append(time_data)
-                text_stock_day.append(time_text_dur)
-                time_stock_day.append(time_dur)
+                text_data = text_data.unsqueeze(0)
+                time_data = time_data.unsqueeze(0)
+                time_text_dur = time_text_dur[1:, :, :]
+                time_dur = time_dur[1:, :, :]
+                time_text_dur = torch.cat([time_text_dur, text_data])
+                time_dur = torch.cat([time_dur, time_data])
+                temp_time_text_dur = time_text_dur.unsqueeze(0)
+                temp_time_dur = time_dur.unsqueeze(0)
+                text_stock_day = torch.cat([text_stock_day, temp_time_text_dur])
+                time_stock_day = torch.cat([time_stock_day, temp_time_dur])
             #print(len(time_text_dur))
-        tweet_dataset.append(text_stock_day)
-        time_dataset.append(time_stock_day)
-
-    text_dataset = np.array(tweet_dataset)
-    time_dataset = np.array(time_dataset)
+        text_stock_day = text_stock_day.unsqueeze(0)
+        time_stock_day = time_stock_day.unsqueeze(0)
+        tweet_dataset = torch.cat([tweet_dataset, text_stock_day])
+        time_dataset = torch.cat([time_dataset, time_stock_day])
 
     return text_dataset, time_dataset
 

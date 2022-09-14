@@ -34,7 +34,7 @@ def make_dataset(price_dataset, text_dataset):
     for idx in range(labels.shape[1]-1):
         #(n_stock, n_feature, n_day, price_feature)
         price_feature = price[:,idx, :, :]
-        #(n_stock, n_feature, n_day, n_text, text_feature)
+        #(n_stock, n_feature, n_day, n_seq, text_feature)
         text_feature = text_dataset[:,idx, :, :, :]
         # future prediction
         label = labels[:, idx+1]
