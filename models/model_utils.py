@@ -27,7 +27,7 @@ def load_text(logger):
 
     return train_text, val_text, test_text
 
-def make_dataset(price_dataset, text_dataset):
+def make_dataset(price_dataset, text_dataset, time_dataset):
     price, labels, stocks, dates = price_dataset
     assert price.shape[1]==text_dataset.shape[1]
     features = []
@@ -36,22 +36,24 @@ def make_dataset(price_dataset, text_dataset):
         price_feature = price[:,idx, :, :]
         #(n_stock, n_feature, n_day, n_seq, text_feature)
         text_feature = text_dataset[:,idx, :, :, :]
+        time_feature = time_dataset[:,idx, :, :, :]
         # future prediction
         label = labels[:, idx+1]
         date = dates[:, idx, :]
-        features.append(((text_feature, price_feature, label, date), stocks))
+        features.append(((text_feature, price_feature, time_feature, label, date), stocks))
 
     dataset = MTSRDataset(features)
     return dataset
 
 
 def load_dataset(args, logger):
-    train_price, val_price, test_price = gen_price(logger)
-    print(train_price[0].shape)
-    (train_text, train_time), (val_text, val_time), (test_text, val_time) = gen_text(logger)
-    print(train_text.shape)
-    train_dataset = make_dataset(train_price, train_text)
-    val_dataset = make_dataset(val_price, val_text)
-    test_dataset = make_dataset(test_price, test_text)
+    train_price, val_price, test_price = gen_price(args, logger)
+    (train_text, train_time), (val_text, val_time), (test_text, test_time) = gen_text(args, logger)
+    logger.info("Price shape is {}".format(train_price[0].shape))
+    logger.info("Text shape is {}".format(train_text.shape))
+    logger.info("Time shape is {}".format(train_time.shape))
+    train_dataset = make_dataset(train_price, train_text, train_time)
+    val_dataset = make_dataset(val_price, val_text, val_time)
+    test_dataset = make_dataset(test_price, test_text, test_time)
 
-    return train_dataset, val_dataset, test_dataset
+    return (train_dataset, val_dataset, test_dataset), train_text.shape[0]

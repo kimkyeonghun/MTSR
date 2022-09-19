@@ -3,10 +3,12 @@ import logging
 import argparse
 
 from torch.optim import Adam
+import torch.nn as nn
+import torch
 
 from model import GAT, FISA
 import utils
-from model_utils import *
+import model_utils
 from trainer import train
 
 logger, log_dir = utils.get_logger(os.path.join('./logs'))
@@ -17,28 +19,26 @@ parser.add_argument('--n_epochs', type=int, default=5000,
 parser.add_argument('--train_batch_size', type=int, default=1,)
 parser.add_argument('--val_batch_size', type=int, default=1,)
 parser.add_argument('--test_batch_size', type=int, default=1,)
-parser.add_argument('--n_head', type=int, default=1,
-                    help='Number of attention head')
-parser.add_argument('--stock_num', type=int, default=87,)
-parser.add_argument('--lr', type=float, default=5e-5,)
+parser.add_argument('--stock_batch_size', type=int, default=3,)
+parser.add_argument('--stock_num', type=int, default=88,)
+parser.add_argument('--lr', type=float, default=0.001,)
 parser.add_argument('--alpha', type=float, default=0.2,)
 parser.add_argument('--dropout', type=float, default=0.38,)
 parser.add_argument('--market_name', type=str, default='NASDAQ')
+
+parser.add_argument('--n_day', type=int, default=5)
+
 args = parser.parse_args()
 
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = '0,1'
 
-def prepare_for_training(logger):
-    logger.info("Number of Head {}".format(args.n_head))
-    # model = GAT(n_feature= 64, n_hidden= 64, n_class = 2,
-    #     dropout= args.dropout,
-    #     alpha= args.alpha,
-    #     n_heads= args.n_head,
-    #     stock_num= args.stock_num,
-    #     logger = logger)
 
-    model = FISA(stock_num=args.stock_num, logger=logger)
-    model.cuda()
+def prepare_for_training(logger, real_stock_num):
 
+    model = FISA(num_stocks=real_stock_num, logger=logger)
+    logger.info(model)
+    #model = nn.DataParallel(model,device_ids=[0,1], output_device=1)
     optimizer = Adam(model.parameters(), lr=args.lr)
 
     return model, optimizer
@@ -47,13 +47,14 @@ def prepare_for_training(logger):
 def main():
     logger.info("#Load Dataset")
 
-    (train_dataset, val_dataset, test_dataset, adj) = load_dataset(args, logger)
+    (train_dataset, val_dataset,
+     test_dataset), real_stock_num = model_utils.load_dataset(args, logger)
 
     logger.info("#Prepare for Training")
-    model, optimizer = prepare_for_training(logger)
+    model, optimizer = prepare_for_training(logger, real_stock_num)
 
     train(args, model, train_dataset, val_dataset,
-          test_dataset, adj, optimizer, logger)
+          test_dataset, optimizer, logger)
 
 
 if __name__ == "__main__":
