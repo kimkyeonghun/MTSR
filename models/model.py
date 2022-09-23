@@ -85,7 +85,7 @@ class Attention(nn.Module):
 
 
 class FISA(nn.Module):
-    def __init__(self, num_stocks, logger=False):
+    def __init__(self, num_stocks, drop_prob, logger=False):
         super(FISA, self).__init__()
         self.logger = logger
 
@@ -95,11 +95,19 @@ class FISA(nn.Module):
         # for i, text_l in enumerate(self.text_lstm):
         #     self.add_module('textlstm{}'.format(i), text_l)
 
+        self.price_lstm = [nn.LSTM(3, 64).to("cuda:1") for _ in range(num_stocks)]
+        for i, price_l in enumerate(self.price_lstm):
+            self.add_module('pricelstm{}'.format(i), price_l)
+
         #self.time_lstm = [nn.DataParallel(TimeLSTM(768, 64, cuda_flag=True), device_ids=[0, 1]) for _ in range(num_stocks)]
         self.time_lstm = [TimeLSTM(768, 64, cuda_flag=True).to(
             "cuda:1") for _ in range(num_stocks)]
         for i, time_l in enumerate(self.time_lstm):
             self.add_module('timelstm{}'.format(i), time_l)
+
+        self.dropout = [nn.Dropout(drop_prob).to("cuda:1") for _ in range(num_stocks)]
+        for i, drop in enumerate(self.dropout):
+            self.add_module('dropout{}'.format(i), drop)
 
         #self.day_lstm = [nn.DataParallel(nn.LSTM(64, 64), device_ids=[0, 1]) for _ in range(num_stocks)]
         self.day_lstm = [nn.LSTM(64, 64).to("cuda:1")
@@ -112,6 +120,15 @@ class FISA(nn.Module):
             Attention(64, 10, device='cuda:1') for _ in range(num_stocks)]
         for i, text_a in enumerate(self.text_attention):
             self.add_module('textattention{}'.format(i), text_a)
+
+        self.price_attention = [
+            Attention(64, 5, device='cuda:1') for _ in range(num_stocks)]
+        for i, price_a in enumerate(self.price_attention):
+            self.add_module('priceattention{}'.format(i), price_a)
+
+        self.bilinear = [nn.Bilinear(64,64,64).to("cuda:1") for _ in range(num_stocks)]
+        for i,bilinear_ in enumerate(self.bilinear):
+            self.add_module('bilinear{}'.format(i), bilinear_)
 
         #self.day_attention = [nn.DataParallel(Attention(64, 5), device_ids=[0, 1]) for _ in range(num_stocks)]
         self.day_attention = [Attention(64, 5, device='cuda:1')
@@ -128,9 +145,6 @@ class FISA(nn.Module):
 
     def info(self, text):
         self.logger.info(text)
-
-    def print_layer_parameter(self,):
-        pass
 
     # def forward(self, text_input, time_inputs, num_stocks):
     #     list_1 = []
@@ -171,7 +185,43 @@ class FISA(nn.Module):
     #     op = 3*torch.tanh(self.linear_stock(ft_vec))
     #     return op
 
-    def forward(self, text_input, time_inputs, num_layer):
+    # def forward(self, text_input, time_inputs, num_layer):
+    #     list_1 = []
+    #     op_size = 64
+    #     # text_input.size(0) = stock_num
+    #     #text_input = [stock_num, n_day, n_text, n_seq], [b, 87, 5, 10, 60]
+    #     i = num_layer
+    #     list_2 = []
+    #     num_day = text_input.size(1)
+    #     num_text = text_input.size(2)
+    #     # intra Day Attention
+    #     for j in range(num_day):
+    #         y, (temp, _) = self.time_lstm[0](text_input[0, j, :].reshape(1, num_text, 768).to(
+    #             "cuda:1"), time_inputs[0, j, :].reshape(1, num_text).to("cuda:1"))
+    #         #y = self.leaky_relu(y)
+    #         y = torch.tanh(y)
+    #         y = self.dropout[0](y)
+    #         y = self.text_attention[0](y, temp, num_text)
+    #         list_2.append(y)
+    #         del y
+    #     text_vectors = torch.Tensor((1, num_day, op_size))
+    #     text_vectors = torch.cat(list_2)
+    #     # inter-day attention
+    #     text, (temp2, _) = self.day_lstm[0](
+    #         text_vectors.reshape(1, num_day, op_size))
+    #     text = torch.tanh(text)
+    #     text = self.dropout[0](text)
+    #     text = self.day_attention[0](text, temp2, num_day)
+    #     list_1.append(text.reshape(1, op_size))
+
+    #     #FFNN, output
+    #     ft_vec = torch.Tensor((1, op_size))
+    #     ft_vec = torch.cat(list_1)
+    #     #op = F.leaky_relu(self.linear_stock(ft_vec))
+    #     op = 3*torch.tanh(self.linear_stock(ft_vec))
+    #     return op
+
+    def forward(self, price_input, text_input, time_inputs, num_layer):
         list_1 = []
         op_size = 64
         # text_input.size(0) = stock_num
@@ -196,7 +246,12 @@ class FISA(nn.Module):
             text_vectors.reshape(1, num_day, op_size))
         text = torch.tanh(text)
         text = self.day_attention[i](text, temp2, num_day)
-        list_1.append(text.reshape(1, op_size))
+
+        #output?
+        price_y, (temp, _) = self.price_lstm[i](price_input)
+        price_y = self.price_attention[i](price_y, temp, num_day)
+        concat = self.bilinear[i](text, price_y)
+        list_1.append(concat.reshape(1, op_size))
 
         #FFNN, output
         ft_vec = torch.Tensor((1, op_size))

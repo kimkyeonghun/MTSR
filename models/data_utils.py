@@ -217,8 +217,9 @@ def gen_text(args, logger=False):
                     string = tweet_preprocessing(d['text'])
                     inputs = bert_tokenzier(
                         string, max_length=30, padding='max_length', truncation=True, return_tensors='pt')
-                    encoded_input = torch.sum(bert.embeddings(
-                        inputs['input_ids'].cuda()), 1)/30
+                    encoded_input = (torch.sum(bert(
+                        inputs['input_ids'].cuda())['last_hidden_state'], 1)/30).cpu().detach()
+                    del inputs
                     now_time = parse(d['created_at'])
                     if last_time:
                         if ((now_time - last_time).seconds/60) == 0:
@@ -229,6 +230,7 @@ def gen_text(args, logger=False):
                         time_delta.append(torch.tensor(1.0))
 
                     inputs_list.append(encoded_input)
+                    del encoded_input
                     last_time = now_time
             if len(inputs_list):
                 inputs = torch.cat(inputs_list)

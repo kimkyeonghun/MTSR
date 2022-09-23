@@ -25,27 +25,29 @@ def train_epoch(args, model, train_dataset, optimizer):
     preds = []
     labels = []
     for _, batch in enumerate(tqdm(trainDataLoader, desc="Iteration")):
-        _, train_text, train_time, train_label, _, _ = batch
+        train_price, train_text, train_time, train_label, _, _ = batch
+        train_price = train_price.squeeze(0)
         train_label = train_label.squeeze(0)
         train_text = train_text.squeeze(0)
         train_time = train_time.squeeze(0)
         loss = 0
         true_label = 0
         for s in range(0, train_text.size(0), 1):
+            one_train_price = train_price[s:s +
+                                        args.stock_batch_size, :].to("cuda:1")
             one_train_text = train_text[s:s +
                                         args.stock_batch_size, :].to("cuda:1")
             one_train_time = train_time[s:s +
                                         args.stock_batch_size, :].to("cuda:1")
-            outputs = model(one_train_text, one_train_time, s)
+            outputs = model(one_train_price, one_train_text, one_train_time, s)
             if all(torch.zeros(args.stock_batch_size) == train_label[s:s+args.stock_batch_size].view(-1)):
                 del one_train_text
                 del one_train_time
                 del outputs
             else:
                 true_label += args.stock_batch_size
-                loss += 10 * \
-                    loss_fct(
-                        train_label[s:s+args.stock_batch_size].view(-1).to("cuda:1"), outputs.view(-1))
+                loss += loss_fct(
+                            train_label[s:s+args.stock_batch_size].view(-1).to("cuda:1"), outputs.view(-1))
                 preds.append(
                     np.ravel(3*torch.tanh(outputs).detach().cpu().numpy())[0])
                 labels.append(
@@ -84,32 +86,41 @@ def val_epoch(args, model, val_dataset, logger):
     preds = []
     with torch.no_grad():
         for _, batch in enumerate(tqdm(valDataLoader, desc="Iteration")):
-            _, val_text, val_time, val_label, _, _ = batch
+            val_price, val_text, val_time, val_label, _, _ = batch
+            val_price = val_price.squeeze(0)
             val_label = val_label.squeeze(0)
             val_text = val_text.squeeze(0)
             val_time = val_time.squeeze(0)
             loss = 0
+            true_label = 0
             for s in range(0, val_text.size(0), args.stock_batch_size):
+                one_val_price = val_price[s:s +
+                                        args.stock_batch_size, :].to("cuda:1")
                 one_val_text = val_text[s:s +
                                         args.stock_batch_size, :].to("cuda:1")
                 one_val_time = val_time[s:s +
                                         args.stock_batch_size, :].to("cuda:1")
-                outputs = model(one_val_text, one_val_time, s)
-                loss += 10 * \
-                    loss_fct(
-                        val_label[s:s+args.stock_batch_size].view(-1).to("cuda:1"), outputs.view(-1))
-                preds.append(
-                    np.ravel(3*torch.tanh(outputs).detach().cpu().numpy())[0])
-                labels.append(
-                    np.ravel(val_label[s:s+args.stock_batch_size].detach().cpu().numpy())[0])
-                del one_val_text
-                del one_val_time
-                del outputs
-
-            loss /= val_text.size(0)
-            #train_loss += loss.item()
-            val_loss += loss
-            tr_steps += 1
+                outputs = model(one_val_price, one_val_text, one_val_time, s)
+                if all(torch.zeros(args.stock_batch_size) == val_label[s:s+args.stock_batch_size].view(-1)):
+                    del one_val_text
+                    del one_val_time
+                    del outputs
+                else:
+                    true_label += args.stock_batch_size
+                    loss += loss_fct(
+                                val_label[s:s+args.stock_batch_size].view(-1).to("cuda:1"), outputs.view(-1))
+                    preds.append(
+                        np.ravel(3*torch.tanh(outputs).detach().cpu().numpy())[0])
+                    labels.append(
+                        np.ravel(val_label[s:s+args.stock_batch_size].detach().cpu().numpy())[0])
+                    del one_val_text
+                    del one_val_time
+                    del outputs
+            if true_label:
+                loss /= val_text.size(0)
+                #train_loss += loss.item()
+                val_loss += loss
+                tr_steps += 1
 
     return val_loss/tr_steps, preds, labels
 
@@ -127,23 +138,31 @@ def test_epoch(args, model, test_dataset):
     labels = []
     with torch.no_grad():
         for _, batch in enumerate(tqdm(testDataLoader, desc="Iteration")):
-            _, test_text, test_time, test_label, _, _ = batch
+            test_price, test_text, test_time, test_label, _, _ = batch
+            test_price = test_price.squeeze(0)
             test_label = test_label.squeeze(0)
             test_text = test_text.squeeze(0)
             test_time = test_time.squeeze(0)
             for s in range(0, test_text.size(0), args.stock_batch_size):
+                one_test_price = test_price[s:s +
+                                          args.stock_batch_size, :].to("cuda:1")
                 one_test_text = test_text[s:s +
                                           args.stock_batch_size, :].to("cuda:1")
                 one_test_time = test_time[s:s +
                                           args.stock_batch_size, :].to("cuda:1")
-                outputs = model(one_test_text, one_test_time, s)
-                # print(train_label[s:s+1])
-                preds.append(np.ravel(outputs.detach().cpu().numpy())[0])
-                labels.append(
-                    np.ravel(test_label[s:s+args.stock_batch_size].detach().cpu().numpy())[0])
-                del one_test_text
-                del one_test_time
-                del outputs
+                outputs = model(one_test_price, one_test_text, one_test_time, s)
+                if all(torch.zeros(args.stock_batch_size) == test_label[s:s+args.stock_batch_size].view(-1)):
+                    del one_test_text
+                    del one_test_time
+                    del outputs
+                else:
+                    # print(train_label[s:s+1])
+                    preds.append(np.ravel(outputs.detach().cpu().numpy())[0])
+                    labels.append(
+                        np.ravel(test_label[s:s+args.stock_batch_size].detach().cpu().numpy())[0])
+                    del one_test_text
+                    del one_test_time
+                    del outputs
 
     return [], preds, labels
 
@@ -189,9 +208,32 @@ def ACC7(value, true):
     return np.sum(np.array(value) == np.array(true))/float(len(true))
 
 
+def ACC2(value, true):
+    assert len(value) == len(true)
+    for i, v in enumerate(value):
+        if v < 0:
+            value[i] = -1
+        elif v==0:
+            value[i] = 0
+        elif v > 0:
+            value[i] = 1
+
+    for i, v in enumerate(true):
+        if v < 0:
+            value[i] = -1
+        elif v==0:
+            value[i] = 0
+        elif v > 0:
+            value[i] = 1
+    
+    return np.sum(np.array(value) == np.array(true))/float(len(true))
+
 def test_score(pred, label):
-    acc = ACC7(pred, label)
-    return acc
+    pred = np.round(np.array(pred),4)
+    label = np.round(np.array(label),4)
+    acc7 = ACC7(pred, label)
+    acc2 = ACC2(pred, label)
+    return acc7, acc2
 
 
 def train(args, model, train_datatset, val_dataset, test_dataset, optimizer, logger):
@@ -213,34 +255,34 @@ def train(args, model, train_datatset, val_dataset, test_dataset, optimizer, log
         logger.info("[Train Epoch {}] Train_loss: {}".format(
             epoch+1, train_loss,))
 
-        train_acc = test_score(preds, labels)
+        train_acc7, train_acc2 = test_score(preds, labels)
 
-        logger.info("[Train Epoch {}] Accuracy: {}"
-                    .format(epoch+1, train_acc))
+        logger.info("[Train Epoch {}] Accuracy7: {}, Accuracy2: {}"
+                    .format(epoch+1, train_acc7, train_acc2))
 
         logger.info("=======================Validation=======================")
         val_loss, preds, labels = val_epoch(args, model, val_dataset, logger)
         logger.info("[Val Epoch {}] Val_loss: {}".format(epoch+1, val_loss,))
-        logger.info(preds)
-        val_acc = test_score(preds, labels)
+        #logger.info(preds)
+        val_acc7, val_acc2 = test_score(preds, labels)
 
-        logger.info("[Val Epoch {}] Accuracy: {}"
-                    .format(epoch+1, val_acc))
+        logger.info("[Val Epoch {}] Accuracy7: {}, Accuracy2: {}"
+                    .format(epoch+1, val_acc7, val_acc2))
 
         logger.info("=======================Test=======================")
         _, preds, labels = test_epoch(args, model, test_dataset)
 
-        acc = test_score(preds, labels)
-        logger.info("[Test Epoch {}] Accuracy: {}"
-                    .format(epoch+1, acc))
+        test_acc7, test_acc2 = test_score(preds, labels)
+        logger.info("[Test Epoch {}] Accuracy7: {}, Accuracy2: {}"
+                    .format(epoch+1, test_acc7, test_acc2))
 
         # if val_loss < best_loss:
-        if val_acc > best_acc:
+        if val_loss < best_loss:
             torch.save(model.state_dict(),
                        os.path.join(model_save_path, 'model_' + str(epoch+1)+'.pt'))
             best_epoch = epoch+1
             best_loss = val_loss
-            best_acc = val_acc
+            best_acc = val_acc7
             patience = 0
 
         if patience == 50:
